@@ -1,0 +1,178 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+:root {
+    /* 1. Core Palette - Light Mode (Crimson & White) */
+    --erp-primary: #8c031c;      /* Deep Crimson */
+    --erp-primary-dark: #6b0215;
+    --erp-primary-light: #b01a33;
+    
+    --erp-bg-main: #fdfdfd;     /* Near white */
+    --erp-bg-soft: #f8fafc;
+    
+    --erp-card-bg: #ffffff;
+    --erp-text-main: #0f172a;   /* Slate-900 */
+    --erp-text-secondary: #64748b; /* Slate-500 */
+    --erp-border: #e2e8f0;      
+    
+    --erp-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+    --erp-white: #ffffff;
+}
+
+/* 2. Dark Mode Overrides */
+[data-bs-theme="dark"] {
+    --erp-primary: #af1c30;      /* Slightly brighter crimson for dark background */
+    --erp-primary-dark: #8c031c;
+    --erp-primary-light: #d42a42;
+
+    --erp-bg-main: #0f172a;     
+    --erp-bg-soft: #1e293b;     
+    
+    --erp-card-bg: #1e293b;     
+    --erp-text-main: #f1f5f9;   
+    --erp-text-secondary: #94a3b8; 
+    --erp-border: #334155;      
+    
+    --erp-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
+}
+
+/* 3. Global Reset & Typography */
+body {
+    background-color: var(--erp-bg-main) !important;
+    font-family: 'Inter', sans-serif !important;
+    color: var(--erp-text-main);
+}
+
+h1, h2, h3, h4, h5, h6, .page-title, .premium-title {
+    color: var(--erp-text-main) !important;
+    font-weight: 800 !important;
+}
+
+/* 4. Sidebar - Modern Dark Look */
+.app-sidebar, .main-sidebar, .sidebar-wrapper {
+    background-color: #0f172a !important; /* Always dark Slate-950 for premium feel */
+    border-right: 1px solid rgba(255, 255, 255, 0.05) !important;
+    box-shadow: 4px 0 15px var(--erp-shadow) !important;
+}
+
+.sidebar-brand, .brand-link {
+    background-color: #0f172a !important;
+    color: var(--erp-white) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+.brand-link .brand-text {
+    color: #ffffff !important;
+    font-weight: 800 !important;
+}
+
+.app-sidebar .sidebar-wrapper .nav-link,
+.sidebar-menu .nav-item .nav-link {
+    color: rgba(255, 255, 255, 0.75) !important;
+    font-weight: 500;
+}
+
+.app-sidebar .sidebar-wrapper .nav-link:hover,
+.sidebar-menu .nav-item .nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.08) !important;
+    color: #ffffff !important;
+}
+
+.app-sidebar .sidebar-wrapper .nav-link.active,
+.sidebar-menu .nav-item .nav-link.active {
+    background-color: var(--erp-primary) !important;
+    color: #ffffff !important;
+    border-radius: 8px !important;
+    margin: 0 10px !important;
+    font-weight: 700 !important;
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.35) !important;
+    border: none !important;
+}
+
+.app-sidebar .sidebar-wrapper .nav-link.active i,
+.app-sidebar .sidebar-wrapper .nav-link.active p {
+    color: #ffffff !important;
+}
+
+/* 5. Header */
+.app-header {
+    background-color: var(--erp-card-bg) !important;
+    border-bottom: 1px solid var(--erp-border) !important;
+    box-shadow: var(--erp-shadow) !important;
+}
+
+.navbar-nav .nav-link {
+    color: var(--erp-text-main) !important;
+}
+
+/* 6. Components */
+.card, .premium-card, .glass-card, .stat-card-custom {
+    background-color: var(--erp-card-bg) !important;
+    border: 1px solid var(--erp-border) !important;
+    border-radius: 16px !important;
+    box-shadow: var(--erp-shadow) !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card:hover, .glass-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 20px -5px rgba(0, 0, 0, 0.1), 0 8px 8px -5px rgba(0, 0, 0, 0.04) !important;
+}
+
+.card-header, .premium-header {
+    background-color: transparent !important;
+    border-bottom: 1px solid var(--erp-border) !important;
+    padding: 1.25rem 1.5rem !important;
+}
+
+/* 7. Tables */
+.app-wrapper .table {
+    color: var(--erp-text-main);
+}
+
+.app-wrapper .table thead th {
+    background-color: var(--erp-bg-soft) !important;
+    color: var(--erp-text-secondary) !important;
+    font-weight: 700 !important;
+    border-bottom: 2px solid var(--erp-border) !important;
+}
+
+/* 8. Buttons */
+.btn-primary, .btn-crimson, .search-btn, .btn-success {
+    background-color: var(--erp-primary) !important;
+    border: none !important;
+    color: #ffffff !important;
+    border-radius: 10px !important;
+    padding: 0.6rem 1.5rem !important;
+    font-weight: 700 !important;
+    box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2);
+    transition: all 0.2s ease;
+}
+
+.btn-primary:hover, .btn-crimson:hover, .search-btn:hover {
+    background-color: var(--erp-primary-dark) !important;
+    transform: translateY(-1px);
+    box-shadow: 0 10px 15px -3px rgba(79, 70, 229, 0.3);
+}
+
+/* 9. Utility Classes */
+.text-primary, .text-crimson {
+    color: var(--erp-primary) !important;
+}
+
+.bg-primary {
+    background-color: var(--erp-primary) !important;
+}
+
+/* Global Redundancy Fix */
+.app-content-header { display: none !important; }
+
+/* Notification Utilities */
+.extra-small { font-size: 0.7rem; line-height: 1.1; }
+.navbar-badge {
+    position: absolute;
+    top: 5px;
+    right: 3px;
+    font-weight: 800;
+}
+#notification-list::-webkit-scrollbar { width: 4px; }
+#notification-list::-webkit-scrollbar-thumb { background: var(--erp-border); border-radius: 10px; }
