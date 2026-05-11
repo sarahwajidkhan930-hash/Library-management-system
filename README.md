@@ -29,11 +29,12 @@
 ## ✨ Key Features
 
 - **🔐 Robust RBAC**: Comprehensive Role-Based Access Control for Super Admins, Librarians, Assistant Managers, and Students.
-- **📚 Smart Circulation**: Seamless book issuance and return system with automatic fine calculation.
-- **📊 Live Analytics**: Real-time KPI stats and operations feed for librarians.
-- **🛡️ Audit Trails**: Detailed digital audit logs tracking every critical action in the system.
-- **📋 Inventory Control**: Advanced management of book stock, categories, and authors.
-- **💡 Student Portal**: Personal dashboard for students to track borrowings, pay fines, and request new books.
+- **📚 Smart Circulation**: Seamless book issuance and return system with automatic fine calculation and overdue alerts.
+- **🔍 Intelligent ISBN Check**: Real-time AJAX-powered ISBN validation to prevent duplicate entries and ensure data integrity.
+- **📊 Live Analytics**: Real-time KPI stats and operations feed for librarians, showing most borrowed books and top students.
+- **🛡️ Digital Audit Trail**: Advanced, filterable audit logs tracking every critical action in the system for full accountability.
+- **📋 Inventory Control**: Professional management of book stock, categories, and authors with stock replenishment tracking.
+- **💡 Student Portal**: Personal dashboard for students to track borrowings, pay fines, and request new books directly.
 
 ---
 
