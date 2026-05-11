@@ -56,6 +56,8 @@ if (isset($_GET['delete'])) {
         $pdo->beginTransaction();
         // Delete role access first (foreign key or just cleanup)
         $pdo->prepare("DELETE FROM role_access WHERE page_id = ?")->execute([$id]);
+        // Update children to prevent orphaning
+        $pdo->prepare("UPDATE sys_pages SET parent_id = 0 WHERE parent_id = ?")->execute([$id]);
         // Delete page
         $pdo->prepare("DELETE FROM sys_pages WHERE id = ?")->execute([$id]);
         $pdo->commit();
@@ -71,8 +73,37 @@ if (isset($_GET['delete'])) {
 // Fetch Roles
 $roles = $pdo->query("SELECT * FROM sys_roles ORDER BY role_name ASC")->fetchAll();
 
-// Fetch Pages
-$pages = $pdo->query("SELECT * FROM sys_pages ORDER BY parent_id, id ASC")->fetchAll();
+// Fetch Pages & Build Hierarchical Tree
+$rawPages = $pdo->query("SELECT * FROM sys_pages ORDER BY sort_order ASC, id ASC")->fetchAll();
+$pageTree = [];
+foreach ($rawPages as $p) {
+    $pageTree[$p['parent_id']][] = $p;
+}
+
+$orderedPages = [];
+$visited = [];
+function flattenTree($parentId, $level, $pageTree, &$orderedPages, &$visited) {
+    if (!isset($pageTree[$parentId])) return;
+    foreach ($pageTree[$parentId] as $p) {
+        if (isset($visited[$p['id']])) continue;
+        $visited[$p['id']] = true;
+        $p['level'] = $level;
+        $orderedPages[] = $p;
+        flattenTree($p['id'], $level + 1, $pageTree, $orderedPages, $visited);
+    }
+}
+flattenTree(0, 0, $pageTree, $orderedPages, $visited);
+
+// Append any orphaned pages that couldn't be reached from root
+foreach ($rawPages as $p) {
+    if (!isset($visited[$p['id']])) {
+        $p['level'] = 0;
+        $p['page_name'] = '[Orphaned] ' . $p['page_name'];
+        $orderedPages[] = $p;
+        $visited[$p['id']] = true;
+        flattenTree($p['id'], 1, $pageTree, $orderedPages, $visited);
+    }
+}
 
 // Fetch Current Access (for the matrix)
 $accessMap = [];
@@ -82,7 +113,7 @@ foreach ($accessData as $row) {
 }
 
 // Fetch Potential Parents
-$parents = $pdo->query("SELECT * FROM sys_pages WHERE page_url = '#' OR parent_id = 0 ORDER BY page_name ASC")->fetchAll();
+$parents = $orderedPages;
 ?>
 
 <div class="card card-primary card-outline">
@@ -110,15 +141,17 @@ $parents = $pdo->query("SELECT * FROM sys_pages WHERE page_url = '#' OR parent_i
                         <tr><td colspan="<?= count($roles) + 2 ?>" class="text-center text-muted">No pages found.</td></tr>
                     <?php endif; ?>
                     
-                    <?php foreach($pages as $p): ?>
+                    <?php foreach($orderedPages as $p): 
+                        $padding = $p['level'] * 25;
+                    ?>
                     <tr>
                         <td>
-                            <div class="fw-bold">
+                            <div class="fw-bold" style="padding-left: <?= $padding ?>px;">
+                                <?= ($p['level'] > 0) ? '<span class="text-muted me-2">|—</span>' : '' ?>
                                 <i class="<?= $p['icon_class'] ?: 'bi bi-file-earmark' ?> me-1"></i>
-                                <?= ($p['parent_id'] > 0) ? '<span class="text-muted ms-2">—</span> ' : '' ?>
                                 <?= htmlspecialchars($p['page_name']) ?>
                             </div>
-                            <small class="text-muted"><?= htmlspecialchars($p['page_url']) ?></small>
+                            <small class="text-muted" style="padding-left: <?= $padding + ($p['level'] > 0 ? 30 : 25) ?>px;"><?= htmlspecialchars($p['page_url']) ?></small>
                         </td>
                         <?php foreach($roles as $r): 
                             $hasAccess = isset($accessMap[$p['id']][$r['role_key']]);
@@ -175,7 +208,7 @@ $parents = $pdo->query("SELECT * FROM sys_pages WHERE page_url = '#' OR parent_i
                     <select name="parent_id" id="modal_parent_id" class="form-select">
                         <option value="0">None (Root)</option>
                         <?php foreach($parents as $pt): ?>
-                            <option value="<?= $pt['id'] ?>"><?= htmlspecialchars($pt['page_name']) ?></option>
+                            <option value="<?= $pt['id'] ?>"><?= str_repeat('&nbsp;&nbsp;&nbsp;', $pt['level']) . htmlspecialchars($pt['page_name']) ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>

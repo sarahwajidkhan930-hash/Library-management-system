@@ -27,6 +27,32 @@ switch ($action) {
         }
         break;
 
+    case 'renew':
+        $borrowingId = $_POST['borrowing_id'] ?? 0;
+        if ($borrowingId) {
+            $res = $lib->renewBook($borrowingId);
+            echo json_encode($res);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Invalid borrowing ID.']);
+        }
+        break;
+
+    case 'bulk_return':
+        $ids = $_POST['return_ids'] ?? [];
+        if (empty($ids) || !is_array($ids)) {
+            echo json_encode(['success' => false, 'message' => 'No books selected directly for return.']);
+            exit;
+        }
+        $successCount = 0;
+        foreach ($ids as $bid) {
+            $res = $lib->checkInBook($bid);
+            if ($res['success']) {
+                $successCount++;
+            }
+        }
+        echo json_encode(['success' => true, 'message' => "Successfully returned $successCount book(s)."]);
+        break;
+
     case 'settle_fine':
         $userId = $_POST['user_id'] ?? 0;
         $res = $lib->settleStudentFines($userId);

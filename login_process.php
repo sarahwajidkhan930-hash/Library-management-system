@@ -19,7 +19,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($auth->login($identifier, $password)) {
         
         // 2. Role-Based Verification & Redirection
-        if (in_array($_SESSION['role'], ['librarian', 'super_admin', 'student'])) {
+        if (in_array($_SESSION['role'], ['librarian', 'super_admin', 'student','assistant_manager'])) {
             
             // Redirect based on role
             if ($_SESSION['role'] === 'librarian') {
@@ -28,6 +28,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 header("Location: dashboards/librarian/librarian_dashboard.php");
             } elseif ($_SESSION['role'] === 'student') {
                 header("Location: dashboards/student/student_dashboard.php");
+            }  elseif ($_SESSION['role'] === 'assistant_manager') {
+                header("Location: dashboards/librarian/librarian_dashboard.php");
             } else {
                 header("Location: dashboards/super_admin/manage_pages.php");
             }

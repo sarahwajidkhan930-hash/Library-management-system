@@ -264,6 +264,7 @@ require_once '../../includes/header.php';
             <thead>
                 <tr>
                     <th>Ref ID</th>
+                    <th style="width: 60px;">Cover</th>
                     <th>Book Specification</th>
                     <th>Category</th>
                     <th class="text-center">Stock Details</th>
@@ -276,6 +277,15 @@ require_once '../../includes/header.php';
                     <?php while($row = $result->fetch_assoc()): ?>
                         <tr>
                             <td class="text-muted small fw-bold">#<?= $row['id'] ?></td>
+                            <td class="text-center">
+                                <?php if (!empty($row['cover_image'])): ?>
+                                    <img src="../../assets/img/covers/<?= htmlspecialchars($row['cover_image']) ?>" class="rounded shadow-sm" style="width: 40px; height: 55px; object-fit: cover;" alt="Cover">
+                                <?php else: ?>
+                                    <div class="rounded bg-light d-flex align-items-center justify-content-center text-muted border shadow-sm" style="width: 40px; height: 55px;">
+                                        <i class="bi bi-book small"></i>
+                                    </div>
+                                <?php endif; ?>
+                            </td>
                             <td>
                                 <a href="book_details.php?id=<?= $row['id'] ?>" class="text-decoration-none">
                                     <div class="fw-bold text-primary mb-1"><?= htmlspecialchars($row['title']) ?></div>

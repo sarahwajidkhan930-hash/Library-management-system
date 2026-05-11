@@ -94,9 +94,19 @@ require_once '../../includes/header.php';
 <div class="content px-4 pb-5">
     <div class="container-fluid">
         <div class="card book-card mb-4 mt-3">
-            <div class="book-header text-center">
-                <div class="mb-3">
-                    <?php if ($book['is_issueable'] == 1): ?>
+            <div class="book-header">
+                <div class="row align-items-center">
+                    <?php if (!empty($book['cover_image'])): ?>
+                    <div class="col-md-3 text-center mb-4 mb-md-0">
+                        <img src="../../assets/img/covers/<?= htmlspecialchars($book['cover_image']) ?>" alt="Cover Art" class="img-fluid rounded-4 shadow-lg" style="max-height: 250px; border: 4px solid rgba(255,255,255,0.15);">
+                    </div>
+                    <div class="col-md-9 text-center text-md-start">
+                    <?php else: ?>
+                    <div class="col-12 text-center">
+                    <?php endif; ?>
+                        
+                        <div class="mb-3">
+                            <?php if ($book['is_issueable'] == 1): ?>
                         <span class="status-badge bg-white text-success shadow-sm">
                             <i class="bi bi-check2-circle me-1"></i>Available for Issue
                         </span>
@@ -120,6 +130,9 @@ require_once '../../includes/header.php';
                         <span class="opacity-50 small">(<?= $ratingStats['count'] ?> reviews)</span>
                     </div>
                 <?php endif; ?>
+                
+                    </div> <!-- End of Col -->
+                </div> <!-- End of Row -->
             </div>
             
             <div class="card-body p-4">

@@ -12,31 +12,40 @@
     const themeIcon = document.getElementById('theme-icon');
     const htmlElement = document.documentElement;
 
-    // 1. Function to update Icon
     function updateIcon(theme) {
+        if (!themeIcon) return;
         if (theme === 'dark') {
             themeIcon.classList.remove('bi-sun-fill');
-            themeIcon.classList.add('bi-moon-fill');
+            themeIcon.classList.add('bi-moon-stars-fill');
         } else {
-            themeIcon.classList.remove('bi-moon-fill');
+            themeIcon.classList.remove('bi-moon-stars-fill');
             themeIcon.classList.add('bi-sun-fill');
         }
     }
 
-    // 2. Initialize Icon on Load
-    const currentTheme = localStorage.getItem('theme') || 'light';
-    updateIcon(currentTheme);
+    if (toggleButton) {
+        // Initialize Icon
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        console.log('Initializing theme:', savedTheme);
+        updateIcon(savedTheme);
 
-    // 3. Handle Click
-    toggleButton.addEventListener('click', () => {
-        const current = htmlElement.getAttribute('data-bs-theme');
-        const newTheme = current === 'dark' ? 'light' : 'dark';
-        
-        // Apply
-        htmlElement.setAttribute('data-bs-theme', newTheme);
-        localStorage.setItem('theme', newTheme); // SAVE IT
-        updateIcon(newTheme);
-    });
+        toggleButton.addEventListener('click', (e) => {
+            e.preventDefault();
+            const current = document.documentElement.getAttribute('data-bs-theme') || 'light';
+            const newTheme = current === 'dark' ? 'light' : 'dark';
+            
+            console.log('Switching to theme:', newTheme);
+            
+            document.documentElement.setAttribute('data-bs-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            updateIcon(newTheme);
+            
+            // Reload to ensure all components (charts, etc) refresh with new theme
+            setTimeout(() => {
+                location.reload();
+            }, 50);
+        });
+    }
 
     // 4. Notification Handler
     const markReadBtn = document.getElementById('mark-notifications-read');

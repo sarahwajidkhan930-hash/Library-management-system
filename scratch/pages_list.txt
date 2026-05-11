@@ -1,0 +1,17 @@
+﻿--- ALL SYS_PAGES ---
+[ 3] Parent:  2 | Sort:  1 | Name: Manage Users              | URL: dashboards/super_admin/manage_users.php
+[12] Parent:  0 | Sort:  1 | Name: Library Dashboard         | URL: dashboards/librarian/librarian_dashboard.php
+[ 2] Parent:  0 | Sort:  2 | Name: System Management         | URL: #
+[ 4] Parent:  2 | Sort:  2 | Name: Manage Roles              | URL: dashboards/super_admin/manage_roles.php
+[ 6] Parent: 35 | Sort:  2 | Name: Student Dashboard         | URL: dashboards/student/student_dashboard.php
+[ 5] Parent:  2 | Sort:  3 | Name: Manage Pages              | URL: dashboards/super_admin/manage_pages.php
+[21] Parent:  0 | Sort: 10 | Name: Inventory Management      | URL: dashboards/librarian/inventory_management.php
+[29] Parent: 35 | Sort: 10 | Name: My Reservations           | URL: dashboards/student/reservations.php
+[30] Parent: 35 | Sort: 11 | Name: Fine Payments             | URL: dashboards/student/fines.php
+[31] Parent: 35 | Sort: 12 | Name: Reading History           | URL: dashboards/student/history.php
+[20] Parent:  0 | Sort: 15 | Name: Register Book             | URL: dashboards/librarian/register_book.php
+[22] Parent:  0 | Sort: 25 | Name: Circulation Logs          | URL: dashboards/librarian/circulation_logs.php
+[18] Parent:  0 | Sort: 30 | Name: Student Directory         | URL: dashboards/librarian/student_directory.php
+[27] Parent:  0 | Sort: 40 | Name: Digital Audit Trail       | URL: dashboards/librarian/digital_audit_trail.php
+[35] Parent:  0 | Sort: 50 | Name: Student                   | URL: #
+[28] Parent:  0 | Sort: 55 | Name: Book Categories           | URL: dashboards/librarian/book_categories.php

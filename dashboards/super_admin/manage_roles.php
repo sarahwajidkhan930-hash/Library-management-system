@@ -12,6 +12,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_role'])) {
     } catch(Exception $e) { $error = "Role Key exists."; }
 }
 
+// Handle Update
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_role'])) {
+    $rId = (int)$_POST['role_id'];
+    $rName = trim($_POST['role_name']);
+    $stmt = $pdo->prepare("UPDATE sys_roles SET role_name = ? WHERE id = ?");
+    try {
+        $stmt->execute([$rName, $rId]);
+        echo "<script>window.location.href='manage_roles.php';</script>";
+    } catch(Exception $e) { $error = "Failed to update role."; }
+}
+
 // Handle Delete (with User Migration Check)
 if (isset($_GET['delete'])) {
     $id = $_GET['delete'];
@@ -73,12 +84,15 @@ if (isset($_GET['delete'])) {
                     <td><code><?= $row['role_key'] ?></code></td>
                     <td><?= $badge ?></td>
                     <td>
+                        <button class="btn btn-sm btn-info text-white me-1" onclick='openEditModal(<?= json_encode($row) ?>)'>
+                            <i class="bi bi-pencil-square"></i> Edit
+                        </button>
                         <?php if(!$row['is_system_role']): ?>
                         <a href="?delete=<?= $row['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Users with this role will be suspended. Continue?')">
                             <i class="bi bi-trash"></i> Delete
                         </a>
                         <?php else: ?>
-                            <span class="text-muted fst-italic">Protected</span>
+                            <span class="text-muted fst-italic ms-2">Protected from deletion</span>
                         <?php endif; ?>
                     </td>
                 </tr>
@@ -87,5 +101,42 @@ if (isset($_GET['delete'])) {
         </table>
     </div>
 </div>
+
+<!-- Edit Role Modal -->
+<div class="modal fade" id="editRoleModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form method="POST" class="modal-content">
+            <input type="hidden" name="role_id" id="edit_role_id">
+            <input type="hidden" name="update_role" value="1">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Role</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Role Name</label>
+                    <input type="text" name="role_name" id="edit_role_name" class="form-control" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Role Key (Cannot be changed)</label>
+                    <input type="text" id="edit_role_key" class="form-control" disabled>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openEditModal(roleData) {
+    document.getElementById('edit_role_id').value = roleData.id;
+    document.getElementById('edit_role_name').value = roleData.role_name;
+    document.getElementById('edit_role_key').value = roleData.role_key;
+    new bootstrap.Modal(document.getElementById('editRoleModal')).show();
+}
+</script>
 
 <?php require_once '../../includes/footer.php'; ?>

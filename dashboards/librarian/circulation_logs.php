@@ -18,6 +18,63 @@ if ($mysqli->connect_error) {
 // Handle Search and Filter
 $search = isset($_GET['search']) ? $_GET['search'] : '';
 $action_filter = isset($_GET['action']) ? $_GET['action'] : 'ALL';
+$start_date = isset($_GET['start_date']) ? $_GET['start_date'] : '';
+$end_date = isset($_GET['end_date']) ? $_GET['end_date'] : '';
+
+// CSV Export Logic
+if (isset($_GET['export']) && $_GET['export'] == 'csv') {
+    $filename = "circulation_report_" . date('Y-m-d_His') . ".csv";
+    header('Content-Type: text/csv');
+    header('Content-Disposition: attachment; filename="' . $filename . '"');
+    
+    $output = fopen('php://output', 'w');
+    fputcsv($output, ['Timestamp', 'Member Name', 'Member ID', 'Book Title', 'Asset ID', 'Operation', 'Log Notes']);
+    
+    // Re-run query without limit for export
+    $export_query = "SELECT t.*, u.name as user_name, u.id as student_id, b.title as book_title
+                     FROM lib_transactions t
+                     JOIN users u ON t.user_id = u.id
+                     LEFT JOIN lib_books b ON t.book_id = b.id";
+    $e_cond = [];
+    $e_params = [];
+    $e_types = "";
+    
+    if (!empty($search)) {
+        $e_cond[] = "(u.name LIKE ? OR b.title LIKE ? OR t.notes LIKE ?)";
+        $st = "%$search%"; $e_params[] = $st; $e_params[] = $st; $e_params[] = $st; $e_types .= "sss";
+    }
+    if ($action_filter !== 'ALL') {
+        $e_cond[] = "t.action = ?"; $e_params[] = $action_filter; $e_types .= "s";
+    }
+    if (!empty($start_date)) {
+        $e_cond[] = "DATE(t.transaction_date) >= ?"; $e_params[] = $start_date; $e_types .= "s";
+    }
+    if (!empty($end_date)) {
+        $e_cond[] = "DATE(t.transaction_date) <= ?"; $e_params[] = $end_date; $e_types .= "s";
+    }
+    
+    if (!empty($e_cond)) $export_query .= " WHERE " . implode(" AND ", $e_cond);
+    $export_query .= " ORDER BY t.transaction_date DESC";
+    
+    $e_stmt = $mysqli->prepare($export_query);
+    if (!empty($e_params)) $e_stmt->bind_param($e_types, ...$e_params);
+    $e_stmt->execute();
+    $e_res = $e_stmt->get_result();
+    
+    while ($r = $e_res->fetch_assoc()) {
+        fputcsv($output, [
+            $r['transaction_date'],
+            $r['user_name'],
+            $r['student_id'],
+            $r['book_title'] ?: 'System Operation',
+            $r['book_id'] ?: 'N/A',
+            $r['action'],
+            $r['notes']
+        ]);
+    }
+    fclose($output);
+    exit;
+}
 
 // Rebuilt high-integrity Audit Trail query with LEFT JOINs to capture all system operations
 $query = "SELECT t.*, u.name as user_name, u.fines as student_fines, u.id as student_id, b.title as book_title, b.id as catalog_item_id,
@@ -45,11 +102,23 @@ if ($action_filter !== 'ALL') {
     $types .= "s";
 }
 
+if (!empty($start_date)) {
+    $conditions[] = "DATE(t.transaction_date) >= ?";
+    $params[] = $start_date;
+    $types .= "s";
+}
+
+if (!empty($end_date)) {
+    $conditions[] = "DATE(t.transaction_date) <= ?";
+    $params[] = $end_date;
+    $types .= "s";
+}
+
 if (!empty($conditions)) {
     $query .= " WHERE " . implode(" AND ", $conditions);
 }
 
-$query .= " ORDER BY t.transaction_date DESC LIMIT 50";
+$query .= " ORDER BY t.transaction_date DESC LIMIT 100";
 
 $stmt = $mysqli->prepare($query);
 if (!empty($params)) {
@@ -157,10 +226,17 @@ require_once '../../includes/header.php';
 
     /* Remove Redundant Global Header */
     .app-content-header { display: none !important; }
+
+    @media print {
+        .search-container, .btn-action, .sidebar, .main-header, .search-btn, .clear-btn, .export-btn { display: none !important; }
+        .premium-card { box-shadow: none !important; border: 1px solid #eee !important; }
+        body { background: white !important; }
+        .premium-title i { display: none !important; }
+    }
 </style>
 
-<div class="row mb-4 align-items-center">
-    <div class="col-md-6">
+<div class="row mb-4 align-items-center search-container">
+    <div class="col-lg-4">
         <h2 class="premium-title">
             <a href="librarian_dashboard.php" class="text-decoration-none text-premium-crimson">
                 <i class="bi bi-arrow-left me-3 p-2 bg-light rounded-3"></i>
@@ -168,15 +244,42 @@ require_once '../../includes/header.php';
             Circulation Audit
         </h2>
     </div>
-    <div class="col-md-6">
-        <form action="circulation_logs.php" method="GET" class="d-flex gap-2 justify-content-md-end align-items-center">
-            <?php if (!empty($search) || $action_filter !== 'ALL'): ?>
-                <a href="circulation_logs.php" class="text-muted small me-2 text-decoration-none">
-                    <i class="bi bi-x-circle me-1"></i>Clear
+    <div class="col-lg-8">
+        <form action="circulation_logs.php" method="GET" class="d-flex flex-wrap gap-2 justify-content-lg-end align-items-center">
+            <select name="action" class="form-select form-select-sm border-0 bg-light shadow-sm" style="width: auto; border-radius: 10px;">
+                <option value="ALL" <?= $action_filter == 'ALL' ? 'selected' : '' ?>>All Actions</option>
+                <option value="ISSUE" <?= $action_filter == 'ISSUE' ? 'selected' : '' ?>>Issue</option>
+                <option value="RETURN" <?= $action_filter == 'RETURN' ? 'selected' : '' ?>>Return</option>
+                <option value="SETTLE_FINE" <?= $action_filter == 'SETTLE_FINE' ? 'selected' : '' ?>>Settle Fine</option>
+                <option value="FINE_IMPOSED" <?= $action_filter == 'FINE_IMPOSED' ? 'selected' : '' ?>>Manual Fine</option>
+                <option value="REGISTER_BOOK" <?= $action_filter == 'REGISTER_BOOK' ? 'selected' : '' ?>>Book Registration</option>
+            </select>
+            <div class="input-group input-group-sm" style="width: auto;">
+                <span class="input-group-text bg-white border-end-0 small text-muted">From</span>
+                <input type="date" name="start_date" class="form-control border-start-0 ps-0" value="<?= htmlspecialchars($start_date) ?>">
+            </div>
+            <div class="input-group input-group-sm" style="width: auto;">
+                <span class="input-group-text bg-white border-end-0 small text-muted">To</span>
+                <input type="date" name="end_date" class="form-control border-start-0 ps-0" value="<?= htmlspecialchars($end_date) ?>">
+            </div>
+            
+            <input type="text" name="search" class="search-input form-control-sm" style="width: 200px;" placeholder="Search..." value="<?= htmlspecialchars($search) ?>">
+            <button type="submit" class="search-btn"><i class="bi bi-funnel-fill"></i></button>
+
+            <?php if (!empty($search) || $action_filter !== 'ALL' || !empty($start_date) || !empty($end_date)): ?>
+                <a href="circulation_logs.php" class="btn btn-outline-secondary btn-sm clear-btn rounded-3">
+                    <i class="bi bi-x-lg"></i>
                 </a>
             <?php endif; ?>
-            <input type="text" name="search" class="search-input form-control-sm" style="width: 250px;" placeholder="Search entries..." value="<?= htmlspecialchars($search) ?>">
-            <button type="submit" class="search-btn"><i class="bi bi-search"></i></button>
+
+            <div class="ms-2 d-flex gap-1">
+                <button type="button" onclick="window.print()" class="btn btn-sm btn-light border rounded-3 export-btn" title="Print PDF">
+                    <i class="bi bi-printer"></i>
+                </button>
+                <a href="?<?= http_build_query(array_merge($_GET, ['export' => 'csv'])) ?>" class="btn btn-sm btn-success rounded-3 export-btn" title="Export CSV">
+                    <i class="bi bi-file-earmark-spreadsheet"></i>
+                </a>
+            </div>
         </form>
     </div>
 </div>

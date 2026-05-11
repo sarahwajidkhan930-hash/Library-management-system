@@ -88,7 +88,7 @@ if (!is_array($transactions)) $transactions = [];
         </div>
     </div>
 
-    <div class="row align-items-center mb-4 g-3">
+    <div class="row align-items-center mb-4 g-3 d-print-none">
         <div class="col-md-5">
             <div class="input-group">
                 <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
@@ -100,11 +100,16 @@ if (!is_array($transactions)) $transactions = [];
                 <option value="ALL">All Actions</option>
                 <option value="ISSUE">Issue Only</option>
                 <option value="RETURN">Return Only</option>
+                <option value="SETTLE_FINE">Fine Settlements</option>
+                <option value="REGISTER_BOOK">New Book Entries</option>
             </select>
         </div>
-        <div class="col-md-4 text-md-end">
+        <div class="col-md-4 text-md-end d-flex gap-2 justify-content-md-end">
             <button id="exportCsv" class="btn btn-outline-primary fw-bold shadow-sm">
-                <i class="bi bi-download me-2"></i>Export Audit Log
+                <i class="bi bi-file-earmark-spreadsheet me-2"></i>CSV
+            </button>
+            <button onclick="window.print()" class="btn btn-primary fw-bold shadow-sm">
+                <i class="bi bi-printer me-2"></i>Print PDF
             </button>
         </div>
     </div>
@@ -228,5 +233,17 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
+
+<style>
+@media print {
+    .app-header, .app-sidebar, .d-print-none, .breadcrumb { display: none !important; }
+    .trail-wrapper { padding: 0; width: 100%; }
+    .glass-card { border: none !important; box-shadow: none !important; }
+    .table-trail { border: 1px solid #dee2e6; width: 100%; border-collapse: collapse; }
+    .table-trail thead th { background: #f8f9fa !important; border-bottom: 2px solid #dee2e6; color: black !important; }
+    .table-trail td { border-bottom: 1px solid #dee2e6 !important; }
+    .action-badge { border: 1px solid #ddd !important; background: transparent !important; color: black !important; padding: 2px 5px !important; }
+}
+</style>
 
 <?php require_once '../../includes/footer.php'; ?>

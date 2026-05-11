@@ -18,6 +18,78 @@ if ($mysqli->connect_error) {
 $message = "";
 $messageType = "";
 
+// Handle Bulk CSV Import
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['bulk_import'])) {
+    if (isset($_FILES['csv_file']) && $_FILES['csv_file']['error'] == UPLOAD_ERR_OK) {
+        $file = $_FILES['csv_file']['tmp_name'];
+        $handle = fopen($file, "r");
+        $header = fgetcsv($handle); // Skip header line
+        
+        $count = 0;
+        $errors = 0;
+        
+        require_once '../../core/audit_helper.php';
+        
+        while (($row = fgetcsv($handle)) !== FALSE) {
+            if (count($row) < 5) continue;
+            
+            $title = trim($row[0]);
+            $author_name = trim($row[1]);
+            $category_name = trim($row[2]);
+            $isbn = trim($row[3]);
+            $qty = (int)$row[4];
+            
+            if (empty($title) || empty($author_name)) {
+                $errors++;
+                continue;
+            }
+
+            // 1. Author Handing
+            $stmt = $mysqli->prepare("SELECT id FROM lib_authors WHERE author_name = ?");
+            $stmt->bind_param("s", $author_name);
+            $stmt->execute();
+            $res = $stmt->get_result();
+            if ($exists = $res->fetch_assoc()) {
+                $author_id = $exists['id'];
+            } else {
+                $stmt = $mysqli->prepare("INSERT INTO lib_authors (author_name) VALUES (?)");
+                $stmt->bind_param("s", $author_name);
+                $stmt->execute();
+                $author_id = $mysqli->insert_id;
+            }
+
+            // 2. Category Handling
+            $stmt = $mysqli->prepare("SELECT id FROM lib_categories WHERE category_name = ?");
+            $stmt->bind_param("s", $category_name);
+            $stmt->execute();
+            $res = $stmt->get_result();
+            if ($exists = $res->fetch_assoc()) {
+                $category_id = $exists['id'];
+            } else {
+                $stmt = $mysqli->prepare("INSERT INTO lib_categories (category_name) VALUES (?)");
+                $stmt->bind_param("s", $category_name);
+                $stmt->execute();
+                $category_id = $mysqli->insert_id;
+            }
+
+            // 3. Book Insert
+            $stmt = $mysqli->prepare("INSERT INTO lib_books (title, author_id, category_id, isbn, total_copies, available_copies) VALUES (?, ?, ?, ?, ?, ?)");
+            $stmt->bind_param("siisii", $title, $author_id, $category_id, $isbn, $qty, $qty);
+            if ($stmt->execute()) {
+                $count++;
+            } else {
+                $errors++;
+            }
+        }
+        fclose($handle);
+        
+        logAction('BULK_IMPORT_BOOKS', "Imported $count books from CSV. Errors: $errors");
+        $_SESSION['success_msg'] = "Bulk assimilation complete: $count volumes added successfully ($errors errors).";
+        header("Location: register_book.php");
+        exit();
+    }
+}
+
 // Handle Form Submission
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit'])) {
     $existing_book_id = (int)($_POST['existing_book_id'] ?? 0);
@@ -28,6 +100,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit'])) {
     $total_copies_to_add = (int)$_POST['total_copies'];
     $is_issueable = isset($_POST['is_issueable']) ? 1 : 0;
     
+    $cover_image_path = null;
+    if (isset($_FILES['cover_image']) && $_FILES['cover_image']['error'] == UPLOAD_ERR_OK) {
+        $allowed_types = ['image/jpeg', 'image/png', 'image/jpg'];
+        if (in_array($_FILES['cover_image']['type'], $allowed_types)) {
+            $ext = pathinfo($_FILES['cover_image']['name'], PATHINFO_EXTENSION);
+            $filename = uniqid('cover_') . '.' . $ext;
+            $destination = '../../assets/img/covers/' . $filename;
+            if (move_uploaded_file($_FILES['cover_image']['tmp_name'], $destination)) {
+                $cover_image_path = $filename;
+            }
+        }
+    }
+
     require_once '../../core/audit_helper.php';
 
     if ($existing_book_id > 0) {
@@ -60,8 +145,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit'])) {
         }
 
         if ($final_cat_id > 0) {
-            $updMeta = $mysqli->prepare("UPDATE lib_books SET isbn = ?, category_id = ? WHERE id = ?");
-            $updMeta->bind_param("sii", $new_isbn, $final_cat_id, $existing_book_id);
+            if ($cover_image_path !== null) {
+                $updMeta = $mysqli->prepare("UPDATE lib_books SET isbn = ?, category_id = ?, cover_image = ? WHERE id = ?");
+                $updMeta->bind_param("sisi", $new_isbn, $final_cat_id, $cover_image_path, $existing_book_id);
+            } else {
+                $updMeta = $mysqli->prepare("UPDATE lib_books SET isbn = ?, category_id = ? WHERE id = ?");
+                $updMeta->bind_param("sii", $new_isbn, $final_cat_id, $existing_book_id);
+            }
+            $updMeta->execute();
+        } elseif ($cover_image_path !== null) {
+            $updMeta = $mysqli->prepare("UPDATE lib_books SET cover_image = ? WHERE id = ?");
+            $updMeta->bind_param("si", $cover_image_path, $existing_book_id);
             $updMeta->execute();
         }
 
@@ -119,8 +213,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit'])) {
         }
 
         if ($author_id > 0 && $category_id > 0 && $title !== '') {
-            $stmt = $mysqli->prepare("INSERT INTO lib_books (title, author_id, category_id, isbn, total_copies, available_copies, is_issueable) VALUES (?, ?, ?, ?, ?, ?, ?)");
-            $stmt->bind_param("siisiii", $title, $author_id, $category_id, $isbn, $total_copies_to_add, $total_copies_to_add, $is_issueable);
+            $stmt = $mysqli->prepare("INSERT INTO lib_books (title, author_id, category_id, isbn, total_copies, available_copies, is_issueable, cover_image) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->bind_param("siisiiis", $title, $author_id, $category_id, $isbn, $total_copies_to_add, $total_copies_to_add, $is_issueable, $cover_image_path);
 
             if ($stmt->execute()) {
                 $book_id = $mysqli->insert_id;
@@ -263,6 +357,26 @@ require_once '../../includes/header.php';
         <!-- Main Form Column -->
         <div class="col-lg-8">
             <div class="glass-card shadow-2xl p-4 p-md-5">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h4 class="fw-bold m-0 text-dark">Acquisition Form</h4>
+                    <button class="btn btn-sm btn-outline-primary rounded-pill px-3" type="button" data-bs-toggle="collapse" data-bs-target="#bulkImportCol">
+                        <i class="bi bi-file-earmark-spreadsheet me-1"></i> Bulk Import
+                    </button>
+                </div>
+
+                <!-- Bulk Import Collapse -->
+                <div class="collapse mb-4" id="bulkImportCol">
+                    <div class="bg-primary bg-opacity-10 p-4 rounded-4 border border-primary border-opacity-25">
+                        <h6 class="fw-bold text-primary mb-2">Bulk CSV Assimilation</h6>
+                        <p class="small text-muted mb-3">Format: <code>Title, Author, Category, ISBN, Quantity</code>. Skip the first header row.</p>
+                        <form action="register_book.php" method="POST" enctype="multipart/form-data">
+                            <div class="input-group">
+                                <input type="file" name="csv_file" class="form-control form-control-sm rounded-start-pill" accept=".csv" required>
+                                <button type="submit" name="bulk_import" class="btn btn-primary btn-sm rounded-end-pill px-4">Upload & Process</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
                 <?php if ($message): ?>
                     <div class="alert alert-<?= $messageType ?> alert-dismissible fade show border-0 rounded-4 shadow-sm py-3 mb-4" role="alert">
                         <i class="bi <?= $messageType == 'success' ? 'bi-check-circle-fill' : 'bi-exclamation-triangle-fill' ?> me-2"></i>
@@ -271,7 +385,7 @@ require_once '../../includes/header.php';
                     </div>
                 <?php endif; ?>
 
-                <form action="register_book.php" method="POST" class="needs-validation" novalidate>
+                <form action="register_book.php" method="POST" class="needs-validation" enctype="multipart/form-data" novalidate>
                     <div class="row g-4">
                         <div class="col-12">
                             <label for="title" class="form-label d-flex justify-content-between">
@@ -333,6 +447,9 @@ require_once '../../includes/header.php';
                         <div class="col-md-6">
                             <label for="isbn" class="form-label">ISBN-13 Specification</label>
                             <input type="text" name="isbn" id="isbn" class="form-control premium-input border-0 shadow-sm" placeholder="978-XX-XXXXXX" required>
+                            <div id="isbn-warning" class="extra-small text-danger mt-1 fw-bold" style="display:none;">
+                                <i class="bi bi-exclamation-triangle-fill me-1"></i> Warning: This ISBN already exists (Title: <span id="duplicate-title"></span>)
+                            </div>
                         </div>
 
                         <!-- Category Section -->
@@ -358,9 +475,14 @@ require_once '../../includes/header.php';
                             </div>
                         </div>
 
-                        <div class="col-md-6">
-                            <label for="total_copies" class="form-label">Acquisition Quantity</label>
+                        <div class="col-md-4">
+                            <label for="total_copies" class="form-label">Acquisition Qty</label>
                             <input type="number" name="total_copies" id="total_copies" class="form-control premium-input border-0 shadow-sm" min="1" value="1" required>
+                        </div>
+                        
+                        <div class="col-md-8">
+                            <label for="cover_image" class="form-label">Cover Artwork <span class="text-muted fw-normal text-lowercase">(Optional)</span></label>
+                            <input type="file" name="cover_image" id="cover_image" class="form-control premium-input border-0 shadow-sm bg-white" accept="image/jpeg, image/png, image/jpg">
                         </div>
 
                         <div class="col-12">
@@ -469,6 +591,32 @@ require_once '../../includes/header.php';
         if (selectedOption.dataset.category) categorySelect.value = selectedOption.dataset.category;
         if (selectedOption.dataset.author) authorSelect.value = selectedOption.dataset.author;
     }
+
+    document.getElementById('isbn').addEventListener('blur', async function() {
+        const isbn = this.value.trim();
+        const warning = document.getElementById('isbn-warning');
+        const titleSpan = document.getElementById('duplicate-title');
+        
+        if (!isbn) {
+            warning.style.display = 'none';
+            return;
+        }
+
+        try {
+            const response = await fetch(`ajax_check_isbn.php?isbn=${encodeURIComponent(isbn)}`);
+            const data = await response.json();
+            if (data.exists) {
+                titleSpan.innerText = data.title;
+                warning.style.display = 'block';
+                this.classList.add('is-invalid');
+            } else {
+                warning.style.display = 'none';
+                this.classList.remove('is-invalid');
+            }
+        } catch (e) {
+            console.error('ISBN Check failed');
+        }
+    });
 
     (function () {
       'use strict'

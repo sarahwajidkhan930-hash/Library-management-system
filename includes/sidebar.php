@@ -1,6 +1,6 @@
 <aside class="app-sidebar bg-body-secondary shadow">
-    <div class="sidebar-brand">
-        <a href="<?= BASE_URL ?>index.php" class="brand-link">
+    <div class="sidebar-brand d-flex align-items-center justify-content-between px-3">
+        <a href="<?= BASE_URL ?>index.php" class="brand-link flex-grow-1">
             <img src="<?= $settings['system_logo'] ?>" alt="Logo" class="brand-image opacity-75 shadow">
             <span class="brand-text fw-light"><?= $settings['system_name'] ?></span>
         </a>
@@ -93,31 +93,8 @@
                 $currentBasename = basename($_SERVER['PHP_SELF']);
                 $userRole = $_SESSION['role'] ?? '';
 
-                // 1. Standalone Dashboard: Fetch and render it first
-                $dashStmt = $pdo->prepare("
-                    SELECT p.* FROM sys_pages p
-                    JOIN role_access ra ON p.id = ra.page_id
-                    WHERE ra.role_key = ? AND p.page_name LIKE '%Dashboard%'
-                    LIMIT 1
-                ");
-                $dashStmt->execute([$userRole]);
-                $dashPage = $dashStmt->fetch();
-                $skipIds = [];
-
-                if ($dashPage) {
-                    $skipIds[] = $dashPage['id'];
-                    $isActive = isMenuPageActive($pdo, $dashPage['id'], $currentBasename, $userRole);
-                    $activeClass = $isActive ? 'active' : '';
-
-                    echo '<li class="nav-item">';
-                    echo '<a href="' . BASE_URL . $dashPage['page_url'] . '" class="nav-link ' . $activeClass . '">';
-                    echo '<i class="nav-icon ' . ($dashPage['icon_class'] ?: 'bi bi-speedometer2') . '"></i>';
-                    echo '<p>' . htmlspecialchars($dashPage['page_name']) . '</p></a>';
-                    echo '</li>';
-                }
-
-                // 2. Dynamic Menu: Render remaining items
-                buildMenu($pdo, 0, $userRole, $currentBasename, $skipIds);
+                // Render Dynamic Menu
+                buildMenu($pdo, 0, $userRole, $currentBasename);
                 ?>
 
             </ul>
@@ -125,30 +102,26 @@
     </div>
 </aside>
 
+
 <script>
 /**
- * Sidebar Persistence & State Management
- * Ensures the sidebar maintains its toggle state across page reloads.
+ * Safe Sidebar Persistence
+ * Saves the sidebar state without interfering with AdminLTE's native toggle logic.
  */
 document.addEventListener('DOMContentLoaded', function() {
     const body = document.body;
-    
-    // Restore sidebar state from sessionStorage
-    const savedState = sessionStorage.getItem('sidebar-state');
+    const savedState = localStorage.getItem('sidebar-state');
     if (savedState === 'collapsed') {
         body.classList.add('sidebar-collapse');
-        body.classList.remove('sidebar-expand-lg');
     }
-
-    // Toggle logic for AdminLTE 4
-    const sidebarToggle = document.querySelector('[data-lte-toggle="sidebar"]');
-    if (sidebarToggle) {
-        sidebarToggle.addEventListener('click', function() {
-            setTimeout(() => {
+    const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            if (mutation.attributeName === "class") {
                 const isCollapsed = body.classList.contains('sidebar-collapse');
-                sessionStorage.setItem('sidebar-state', isCollapsed ? 'collapsed' : 'expanded');
-            }, 100);
+                localStorage.setItem('sidebar-state', isCollapsed ? 'collapsed' : 'expanded');
+            }
         });
-    }
+    });
+    observer.observe(body, { attributes: true });
 });
 </script>

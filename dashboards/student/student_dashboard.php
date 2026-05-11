@@ -94,7 +94,7 @@ $books = $lib->getBooks($search);
     .btn-reserve { font-size: 0.7rem; padding: 0.2rem 0.6rem; border-radius: 6px; }
 
     /* Global Redundancy Fix */
-    .app-content-header { display: none !important; }
+    /* .app-content-header { display: none !important; } - Removed for better spacing */
 
     /* Awareness Pulse */
     @keyframes alertPulse {
@@ -105,7 +105,7 @@ $books = $lib->getBooks($search);
     .animate-urgent { animation: alertPulse 2s infinite; }
 </style>
 
-<div class="dashboard-wrapper">
+<div class="content-body py-2">
     <!-- Critical Actions Awareness -->
     <?php if ($stats['overdue_count'] > 0): ?>
         <div class="alert bg-danger border-0 text-white d-flex align-items-center mb-4 p-4 shadow-lg animate-urgent" style="border-radius: 20px;">
@@ -127,9 +127,21 @@ $books = $lib->getBooks($search);
         </div>
     <?php endif; ?>
 
-    <div class="page-header mt-2">
-        <h1 class="page-title"><i class="bi bi-grid-fill me-2"></i>Student Dashboard</h1>
-        <p class="text-muted">Welcome to your library management portal.</p>
+    <!-- Welcome Section (Minimalist) -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="page-title mb-1">Welcome back, <?= explode(' ', $_SESSION['name'])[0] ?>!</h1>
+                    <p class="text-muted small mb-0">Here is a quick look at your library status.</p>
+                </div>
+                <div class="d-none d-md-block">
+                    <a href="ajax_student_actions.php?action=export_history" class="btn btn-outline-primary rounded-pill px-4 btn-sm shadow-sm">
+                        <i class="bi bi-file-earmark-arrow-down me-2"></i>Export History
+                    </a>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Stats Row -->
@@ -174,7 +186,13 @@ $books = $lib->getBooks($search);
                         <div class="stat-label">Total Fines</div>
                         <div class="stat-value text-danger">Rs. <?= number_format($stats['total_fines'], 2) ?></div>
                     </div>
-                    <i class="bi bi-cash-stack fs-1 opacity-25"></i>
+                    <?php if ($stats['total_fines'] > 0): ?>
+                        <button class="btn btn-sm btn-danger rounded-circle p-2" title="Clear Dues" onclick="event.stopPropagation(); payFines();">
+                            <i class="bi bi-credit-card-2-back fs-4"></i>
+                        </button>
+                    <?php else: ?>
+                        <i class="bi bi-cash-stack fs-1 opacity-25"></i>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
@@ -205,8 +223,19 @@ $books = $lib->getBooks($search);
                                 <?php if (count($currentBorrowings) > 0): foreach($currentBorrowings as $b): ?>
                                     <tr>
                                         <td>
-                                            <div class="fw-bold text-dark"><?= htmlspecialchars($b['title']) ?></div>
-                                            <div class="small text-muted"><?= htmlspecialchars($b['author_name'] ?? 'Unknown Author') ?></div>
+                                            <div class="d-flex align-items-center">
+                                                <?php if (!empty($b['cover_image'])): ?>
+                                                    <img src="../../assets/img/covers/<?= htmlspecialchars($b['cover_image']) ?>" class="rounded shadow-sm me-3" style="width: 40px; height: 55px; object-fit: cover;" alt="Cover">
+                                                <?php else: ?>
+                                                    <div class="rounded shadow-sm me-3 bg-light d-flex align-items-center justify-content-center text-primary" style="width: 40px; height: 55px;">
+                                                        <i class="bi bi-book"></i>
+                                                    </div>
+                                                <?php endif; ?>
+                                                <div>
+                                                    <div class="fw-bold text-dark lh-sm mb-1"><?= htmlspecialchars($b['title']) ?></div>
+                                                    <div class="small text-muted"><?= htmlspecialchars($b['author_name'] ?? 'Unknown Author') ?></div>
+                                                </div>
+                                            </div>
                                         </td>
                                         <td><?= date('d M Y', strtotime($b['borrow_date'])) ?></td>
                                         <td>
@@ -230,6 +259,8 @@ $books = $lib->getBooks($search);
                                         <td class="text-center">
                                             <?php if ($b['status'] == 'overdue'): ?>
                                                 <span class="badge text-bg-danger badge-status mb-1">OVERDUE</span>
+                                            <?php elseif (isset($b['is_issueable']) && $b['is_issueable'] == 0): ?>
+                                                <span class="badge text-bg-warning badge-status">RECALLED</span>
                                             <?php else: ?>
                                                 <span class="badge text-bg-success badge-status">ACTIVE</span>
                                             <?php endif; ?>
@@ -301,17 +332,43 @@ $books = $lib->getBooks($search);
                             <div class="text-center py-4 text-muted">No books found matching your search.</div>
                         <?php else: foreach ($books as $book): ?>
                             <div class="book-item d-flex align-items-start px-2">
-                                <div class="flex-shrink-0 mt-1">
-                                    <div class="bg-light rounded p-2 text-primary">
-                                        <i class="bi bi-book-half fs-4"></i>
-                                    </div>
+                                <div class="flex-shrink-0 mt-1" style="width: 50px;">
+                                    <?php if (!empty($book['cover_image'])): ?>
+                                        <img src="../../assets/img/covers/<?= htmlspecialchars($book['cover_image']) ?>" alt="Cover" class="img-fluid rounded shadow-sm" style="width: 100%; height: auto; object-fit: cover;">
+                                    <?php else: ?>
+                                        <div class="bg-light rounded p-2 text-primary text-center">
+                                            <i class="bi bi-book-half fs-4"></i>
+                                        </div>
+                                    <?php endif; ?>
                                 </div>
                                 <div class="flex-grow-1 ms-3">
                                     <div class="fw-bold text-dark lh-sm mb-1"><?= htmlspecialchars($book['title']) ?></div>
                                     <div class="small text-muted mb-1"><?= htmlspecialchars($book['author_name']) ?></div>
                                     <div class="d-flex align-items-center justify-content-between">
                                         <div>
-                                            <?php if ($book['available_copies'] > 0): ?>
+                                            <?php 
+                                            // Check if user currently holds this book
+                                            $userHoldingStatus = false;
+                                            foreach ($currentBorrowings as $cb) {
+                                                if ($cb['book_id'] == $book['id']) {
+                                                    $userHoldingStatus = $cb['status']; // 'borrowed' or 'overdue'
+                                                    break;
+                                                }
+                                            }
+                                            ?>
+                                            <?php if ($userHoldingStatus === 'overdue'): ?>
+                                                <span class="badge rounded-pill bg-danger text-white px-2 py-1" style="font-size: 0.65rem;">
+                                                    <i class="bi bi-exclamation-triangle-fill me-1"></i>Your Copy: Overdue
+                                                </span>
+                                            <?php elseif ($userHoldingStatus === 'borrowed'): ?>
+                                                <span class="badge rounded-pill bg-info text-dark px-2 py-1" style="font-size: 0.65rem;">
+                                                    <i class="bi bi-bookmark-check-fill me-1"></i>Currently Borrowed By You
+                                                </span>
+                                            <?php elseif (isset($book['is_issueable']) && $book['is_issueable'] == 0): ?>
+                                                <span class="badge rounded-pill bg-danger-subtle text-danger border border-danger-subtle px-2 py-1" style="font-size: 0.65rem;">
+                                                    <i class="bi bi-slash-circle me-1"></i>Reference Only
+                                                </span>
+                                            <?php elseif ($book['available_copies'] > 0): ?>
                                                 <span class="badge rounded-pill bg-success-subtle text-success border border-success-subtle px-2 py-1" style="font-size: 0.65rem;">
                                                     <i class="bi bi-check-circle me-1"></i>Available
                                                 </span>
@@ -354,6 +411,24 @@ async function reserveBook(bookId) {
         if(result.success) location.reload();
     } catch (e) {
         alert('An error occurred. Please try again.');
+    }
+}
+async function payFines() {
+    if(!confirm('This will simulate a payment transaction. Proceed to clear Rs. <?= number_format($stats['total_fines'], 2) ?>?')) return;
+    
+    const formData = new FormData();
+    formData.append('action', 'settle_fines');
+
+    try {
+        const response = await fetch('ajax_student_actions.php', {
+            method: 'POST',
+            body: formData
+        });
+        const result = await response.json();
+        alert(result.message);
+        if(result.success) location.reload();
+    } catch (e) {
+        alert('Payment processing failed.');
     }
 }
 </script>

@@ -38,8 +38,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $phone = $_POST['phone'];
             $borrow_limit = $_POST['borrow_limit'];
             
-            $stmt = $pdo->prepare("UPDATE users SET name = ?, email = ?, role = ?, identity_no = ?, registration_no = ?, department = ?, phone = ?, borrow_limit = ? WHERE id = ?");
-            $stmt->execute([$name, $email, $role, $identity_no, $registration_no, $department, $phone, $borrow_limit, $id]);
+            if (!empty($_POST['password'])) {
+                $pass = password_hash($_POST['password'], PASSWORD_DEFAULT);
+                $stmt = $pdo->prepare("UPDATE users SET name = ?, email = ?, role = ?, identity_no = ?, registration_no = ?, department = ?, phone = ?, borrow_limit = ?, password = ? WHERE id = ?");
+                $stmt->execute([$name, $email, $role, $identity_no, $registration_no, $department, $phone, $borrow_limit, $pass, $id]);
+            } else {
+                $stmt = $pdo->prepare("UPDATE users SET name = ?, email = ?, role = ?, identity_no = ?, registration_no = ?, department = ?, phone = ?, borrow_limit = ? WHERE id = ?");
+                $stmt->execute([$name, $email, $role, $identity_no, $registration_no, $department, $phone, $borrow_limit, $id]);
+            }
             $success = "User updated successfully.";
         } 
         elseif ($action === 'delete_user') {
@@ -60,10 +66,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         } 
         elseif ($action === 'reset_password') {
             $id = $_POST['user_id'];
-            $pass = password_hash('123456', PASSWORD_DEFAULT);
+            $new_pass = $_POST['new_password'] ?? '123456';
+            $pass = password_hash($new_pass, PASSWORD_DEFAULT);
             $stmt = $pdo->prepare("UPDATE users SET password = ? WHERE id = ?");
             $stmt->execute([$pass, $id]);
-            $success = "Password reset to '123456'.";
+            $success = "Password successfully updated for user.";
         }
     } catch(Exception $e) {
         $error = $e->getMessage();
@@ -159,13 +166,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                                                data-bs-toggle="modal" data-bs-target="#editUserModal">
                                             <i class="bi bi-pencil me-2 text-primary"></i>Edit Profile</a></li>
                                         
-                                        <li><form method="POST" class="d-inline" onsubmit="return confirm('Reset this users password to 123456?');">
-                                            <input type="hidden" name="action" value="reset_password">
-                                            <input type="hidden" name="user_id" value="<?= $u['id'] ?>">
-                                            <button type="submit" class="dropdown-item">
-                                                <i class="bi bi-shield-lock me-2 text-warning"></i>Reset Password
-                                            </button>
-                                        </form></li>
+                                        <li><a class="dropdown-item reset-pass-btn" href="#" 
+                                               data-user-id="<?= $u['id'] ?>" 
+                                               data-user-name="<?= htmlspecialchars($u['name']) ?>"
+                                               data-bs-toggle="modal" data-bs-target="#resetPassModal">
+                                            <i class="bi bi-shield-lock me-2 text-warning"></i>Change Password</a></li>
 
                                         <li><form method="POST" class="d-inline">
                                             <input type="hidden" name="action" value="toggle_status">
@@ -304,6 +309,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                         <label class="form-label small fw-bold">Borrow Limit (Books)</label>
                         <input type="number" name="borrow_limit" id="edit_borrow_limit" class="form-control" min="1">
                     </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold">Password (Leave blank to keep current)</label>
+                        <input type="text" name="password" id="edit_password" class="form-control" placeholder="New Password">
+                    </div>
                 </div>
             </div>
             <div class="modal-footer bg-light">
@@ -337,6 +346,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     }
 </style>
 
+<!-- Reset Password Modal -->
+<div class="modal fade" id="resetPassModal" tabindex="-1">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <form method="POST" class="modal-content border-0 shadow">
+            <input type="hidden" name="action" value="reset_password">
+            <input type="hidden" name="user_id" id="reset_user_id">
+            <div class="modal-header bg-warning border-0">
+                <h6 class="modal-title fw-bold">Security Credential Update</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <p class="small text-muted mb-3">Updating password for: <br><strong id="reset_user_name" class="text-dark">User Name</strong></p>
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">New Secure Password</label>
+                    <input type="text" name="new_password" class="form-control" placeholder="Minimum 6 characters" required minlength="6">
+                </div>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="submit" class="btn btn-warning w-100 fw-bold rounded-pill">Override Password</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
 document.querySelectorAll('.edit-user-btn').forEach(btn => {
     btn.addEventListener('click', function() {
@@ -350,6 +383,14 @@ document.querySelectorAll('.edit-user-btn').forEach(btn => {
         document.getElementById('edit_department').value = u.department;
         document.getElementById('edit_phone').value = u.phone;
         document.getElementById('edit_borrow_limit').value = u.borrow_limit;
+        document.getElementById('edit_password').value = '';
+    });
+});
+
+document.querySelectorAll('.reset-pass-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        document.getElementById('reset_user_id').value = this.dataset.userId;
+        document.getElementById('reset_user_name').innerText = this.dataset.userName;
     });
 });
 </script>

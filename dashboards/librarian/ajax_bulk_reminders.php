@@ -1,6 +1,8 @@
 <?php
+require_once '../../core/session.php';
 require_once '../../core/db.php';
 require_once '../../core/audit_helper.php';
+
 
 header('Content-Type: application/json');
 

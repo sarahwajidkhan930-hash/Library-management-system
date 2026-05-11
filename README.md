@@ -96,40 +96,49 @@
 
 ## ⚠️ Missing Features Per Page
 
-### Student Dashboard
-- ❌ No **book reservation/hold request** — students cannot request a book that is currently checked out
-- ❌ No **fine payment gateway** — fines are tracked but cannot be paid online; must be settled by librarian
-- ❌ No **reading history export** (PDF/CSV) for student records
-- ❌ No **notifications** for upcoming due dates or fine accumulation
-- ❌ No **book rating/review** capability after returning
-
-### Librarian Dashboard
-- ❌ No **charts or visual analytics** — KPIs are numbers only; no trend graphs
-- ❌ No **date range filter** on the operations feed
-- ❌ No **overdue reminder / bulk notification** mechanism
-
 ### Circulation (`circulation.php`)
-- ❌ No **barcode scan** support for book or student ID
-- ❌ No **bulk issue/return** for events (e.g., classroom batch lending)
-- ❌ No **due date extension** (renew) action directly from the active loans table
-
-### Book Operations / Register Book
-- ❌ No **cover image upload** for books (field exists in DB schema but not surfaced in UI)
-- ❌ No **bulk CSV import** for adding many books at once
-- ❌ No **duplicate ISBN detection warning** on new book form
-
-### Student Directory
-- ❌ No **bulk fine settlement** — fines must be cleared one student at a time
-- ❌ No **export to Excel/CSV** for the student roster
+- ✅ **Barcode scan** support for book or student ID
+- ✅ **Bulk issue/return** for events (e.g., classroom batch lending)
+- ✅ **Due date extension** (renew) action directly from the active loans table
 
 ### Audit Trail
-- ❌ No **export to PDF** functionality
-- ❌ No **action-type filter** on the basic `audit_trail.php` (only on `digital_audit_trail.php`)
+- ✅ **Export to PDF/Print** functionality integrated into Circulation Logs
+- ✅ **Export to CSV** functionality integrated into Circulation Logs
+- ✅ **Action-type filter** on the basic audit_trail.php
+
+### Student Dashboard
+- ✅ **Book reservation/hold request** for checked-out items
+- ✅ **Fine payment gateway** (Simulated clearing)
+- ✅ **Reading history export** (CSV) for student records
+- ✅ **Notifications** for upcoming due dates (Auto-check on login)
+- ✅ **Book rating/review** capability after returning
+
+### Librarian Dashboard
+- ✅ **Charts and visual analytics** — KPIs + Trend graphs + Doughnut distribution
+- ✅ **Date range filter** on the operations feed
+- ✅ **Overdue reminder / bulk notification** mechanism (Email/Notif simulation)
+
+### Circulation (`circulation.php`)
+- ✅ **Barcode scan** support for book or student ID
+- ✅ **Bulk issue/return** for events (e.g., classroom batch lending)
+- ✅ **Due date extension** (renew) action directly from the active loans table
+### Book Operations / Register Book
+- ✅ **Cover image upload** for books (surfaced in Inventory & Details UI)
+- ✅ **Bulk CSV import** for adding many books at once
+- ✅ **Duplicate ISBN detection warning** on new book form
+
+### Student Directory
+- ✅ **Bulk fine settlement** — select multiple students to clear dues in one click
+- ✅ **Export to Excel/CSV** for the student roster
+
+### Audit Trail
+- ✅ **Export to PDF** functionality
+- ✅ **Action-type filter** on the basic `audit_trail.php`
 
 ### Super Admin
-- ❌ `manage_users.php` — no password reset, no role change from this page
-- ❌ No **system settings page** (branding, fine rate, borrow duration, max book limit) — these are hardcoded
-- ❌ No **backup/restore** utility
+- ✅ **Manage users** — custom password reset and role change supported
+- ✅ **System settings page** (Branding, Fine rate, Borrow duration, Max book limit)
+- ✅ **Backup/Restore** utility for database continuity
 
 ---
 

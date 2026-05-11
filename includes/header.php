@@ -72,7 +72,7 @@ if ($currentPageData && isset($currentPageData['id'])) {
     <link rel="stylesheet" href="<?= BASE_URL ?>assets/css/bootstrap.min.css" />
     <link rel="stylesheet" href="<?= BASE_URL ?>assets/css/bootstrap-icons.css" />
     <link rel="stylesheet" href="<?= BASE_URL ?>assets/css/adminlte.min.css" />
-    <link rel="stylesheet" href="<?= BASE_URL ?>assets/css/theme.css?v=3.1" />
+    <link rel="stylesheet" href="<?= BASE_URL ?>assets/css/theme.css?v=8.0" />
     
     <?php
     // Fetch Notifications for Header
@@ -92,7 +92,8 @@ if ($currentPageData && isset($currentPageData['id'])) {
     <nav class="app-header navbar navbar-expand bg-body">
         <div class="container-fluid">
             <ul class="navbar-nav">
-                <li class="nav-item"> <a class="nav-link" data-lte-toggle="sidebar" href="#" role="button"><i class="bi bi-list"></i></a> </li>
+                <li class="nav-item"> <a class="nav-link" id="sidebar-toggle-btn" data-lte-toggle="sidebar" href="#" role="button"><i class="bi bi-list"></i></a> </li>
+
                 <li class="nav-item d-none d-md-block"> <a href="#" class="nav-link"><?= $pageTitle ?></a> </li>
             </ul>
             <ul class="navbar-nav ms-auto">
@@ -182,3 +183,63 @@ if ($currentPageData && isset($currentPageData['id'])) {
         </div>
         <div class="app-content">
             <div class="container-fluid">
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const badge = document.querySelector('.navbar-badge');
+        const list = document.getElementById('notification-list');
+        const markReadBtn = document.getElementById('mark-notifications-read');
+
+        function pollNotifications() {
+            fetch('<?= BASE_URL ?>core/ajax_notifications_poll.php')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        // Update Badge
+                        if (data.count > 0) {
+                            if (badge) {
+                                badge.innerText = data.count;
+                                badge.classList.remove('d-none');
+                            } else {
+                                // Create badge if it didn't exist
+                                const bell = document.querySelector('.bi-bell');
+                                const newBadge = document.createElement('span');
+                                newBadge.className = 'navbar-badge badge text-bg-danger';
+                                newBadge.style.cssText = 'font-size: 0.6rem; padding: 2px 4px;';
+                                newBadge.innerText = data.count;
+                                bell.after(newBadge);
+                            }
+                        } else if (badge) {
+                            badge.classList.add('d-none');
+                        }
+
+                        // Update List
+                        if (list) list.innerHTML = data.html;
+                    }
+                });
+        }
+
+        if (markReadBtn) {
+            markReadBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                const formData = new FormData();
+                formData.append('action', 'mark_read');
+                
+                fetch('<?= BASE_URL ?>dashboards/student/ajax_student_actions.php', { // Reusing existing action handler
+                    method: 'POST',
+                    body: (function(){
+                        const fd = new FormData();
+                        fd.append('action', 'mark_notifications_read'); // Update: matches method name or map accordingly
+                        return fd;
+                    })()
+                }); // Note: We should probably have a more global handler but student actions work for now
+                
+                // For now, let's just trigger the hide
+                if (badge) badge.classList.add('d-none');
+                if (list) list.innerHTML = '<div class="dropdown-item text-center py-3 text-muted small">No new notifications</div>';
+            });
+        }
+
+        // Poll every 30 seconds
+        setInterval(pollNotifications, 30000);
+    });
+    </script>

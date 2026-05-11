@@ -45,6 +45,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $rating = (int)$_POST['rating'];
             $comment = $_POST['comment'] ?? '';
             $response = $lib->addReview($userId, $bookId, $rating, $comment);
+        } elseif ($action === 'mark_notifications_read') {
+            if ($lib->markAllAsRead($userId)) {
+                $response = ['success' => true, 'message' => 'Notifications cleared.'];
+            }
+        } elseif ($action === 'sync_registry') {
+            $lib->updateOverdueStatus();
+            $lib->refreshOverdueStates();
+            $response = ['success' => true, 'message' => 'Registry synchronized.'];
         } elseif ($action === 'fulfill_hold') {
             // Note: This is called by Librarian, but we reuse the handler for utility
             $resId = $_POST['reservation_id'];

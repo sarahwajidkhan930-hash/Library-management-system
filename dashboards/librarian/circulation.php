@@ -8,12 +8,35 @@ $message = '';
 
 // Handle Check Out
 if (isset($_POST['checkout_book'])) {
-    $res = $lib->checkOutBook($_POST['book_id'], $_POST['student_id'], $_POST['due_date']);
-    if ($res['success']) {
-        $lib->logAction($_POST['book_id'], 'ISSUE', "Book issued to student ID: {$_POST['student_id']}");
-        $message = '<div class="alert alert-success alert-dismissible fade show shadow-sm border-0"><i class="bi bi-check-circle-fill me-2"></i> '.$res['message'].' <button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>';
-    } else {
-        $message = '<div class="alert alert-danger alert-dismissible fade show shadow-sm border-0"><i class="bi bi-exclamation-triangle-fill me-2"></i> '.$res['message'].' <button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>';
+    $bookIds = $_POST['book_id'];
+    $studentId = $_POST['student_id'];
+    $dueDate = $_POST['due_date'];
+    
+    if (!is_array($bookIds)) {
+        $bookIds = [$bookIds];
+    }
+    
+    $successCount = 0;
+    $errors = [];
+    foreach ($bookIds as $bId) {
+        if (empty($bId)) continue;
+        $res = $lib->checkOutBook($bId, $studentId, $dueDate);
+        if ($res['success']) {
+            $successCount++;
+        } else {
+            $stmt = $pdo->prepare("SELECT title FROM lib_books WHERE id = ?");
+            $stmt->execute([$bId]);
+            $title = $stmt->fetchColumn() ?: "ID #$bId";
+            $errors[] = "<strong>$title</strong>: " . $res['message'];
+        }
+    }
+    
+    $message = '';
+    if ($successCount > 0) {
+        $message .= '<div class="alert alert-success alert-dismissible fade show shadow-sm border-0"><i class="bi bi-check-circle-fill me-2"></i> Successfully issued ' . $successCount . ' book(s). <button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>';
+    } 
+    if (!empty($errors)) {
+        $message .= '<div class="alert alert-danger alert-dismissible fade show shadow-sm border-0"><i class="bi bi-exclamation-triangle-fill me-2"></i> ' . implode("<br>", $errors) . ' <button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>';
     }
 }
 
@@ -116,14 +139,16 @@ $students = $lib->getStudents();
         <?= $message ?>
 
         <div class="card glass-card">
-            <div class="card-header bg-white border-0 py-3">
+            <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
                 <h5 class="card-title fw-bold m-0 text-dark">Currently Active Borrowings</h5>
+                <button type="button" id="bulkReturnBtn" class="btn btn-sm btn-success px-3 shadow-sm d-none" onclick="processBulkReturn()"><i class="bi bi-arrow-return-left me-1"></i>Return Selected (<span id="bulkReturnCount">0</span>)</button>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-custom mb-0">
+                    <table class="table table-custom mb-0" id="activeBorrowingsTable">
                         <thead>
                             <tr>
+                                <th style="width: 40px;" class="text-center"><input type="checkbox" id="selectAllLoans" class="form-check-input border-secondary"></th>
                                 <th>Student</th>
                                 <th>Book Information</th>
                                 <th>Issued Date</th>
@@ -134,9 +159,10 @@ $students = $lib->getStudents();
                         </thead>
                         <tbody>
                             <?php if (empty($activeBorrowings)): ?>
-                                <tr><td colspan="6" class="text-center py-5 text-muted">No books are currently on loan.</td></tr>
+                                <tr><td colspan="7" class="text-center py-5 text-muted">No books are currently on loan.</td></tr>
                             <?php else: foreach ($activeBorrowings as $loan): ?>
                                 <tr>
+                                    <td class="text-center"><input type="checkbox" class="form-check-input loan-checkbox border-secondary" value="<?= $loan['id'] ?>"></td>
                                     <td>
                                         <div class="fw-bold"><?= htmlspecialchars($loan['student_name']) ?></div>
                                         <span class="text-muted small">Student ID: #<?= $loan['user_id'] ?></span>
@@ -163,6 +189,11 @@ $students = $lib->getStudents();
                                             <a href="?checkin=<?= $loan['id'] ?>" class="btn btn-sm btn-outline-success px-3 rounded-pill" title="Return Book" onclick="return confirm('Confirm book return?')">
                                                 <i class="bi bi-arrow-return-left"></i>
                                             </a>
+                                            <?php if ($loan['status'] !== 'overdue'): ?>
+                                            <button class="btn btn-sm btn-outline-info px-3 rounded-pill" title="Renew (+7 Days)" onclick="renewBook(<?= $loan['id'] ?>, '<?= addslashes($loan['title']) ?>')">
+                                                <i class="bi bi-calendar-plus"></i>
+                                            </button>
+                                            <?php endif; ?>
                                             <button class="btn btn-sm btn-outline-primary px-3 rounded-pill" title="Settle Fines" onclick="settleFine(<?= $loan['user_id'] ?>, '<?= addslashes($loan['student_name']) ?>')">
                                                 <i class="bi bi-cash-stack"></i>
                                             </button>
@@ -191,10 +222,17 @@ $students = $lib->getStudents();
             </div>
             <form action="" method="POST">
                 <div class="modal-body py-4">
+                    <div class="mb-3 bg-danger bg-opacity-10 p-3 rounded-4 border border-danger border-opacity-25 shadow-sm">
+                        <label class="form-label small text-danger fw-bold m-0 d-flex align-items-center">
+                            <i class="bi bi-upc-scan me-2 fs-5"></i>Barcode Scanner Focus
+                        </label>
+                        <input type="text" id="barcodeScanner" class="form-control border-0 mt-2 bg-white" placeholder="Scan Book ISBN/ID or Student ID...">
+                        <div id="scannerFeedback" class="small mt-1 fw-semibold text-danger"></div>
+                    </div>
+
                     <div class="mb-3">
-                        <label class="form-label small fw-bold">Select Book</label>
-                        <select name="book_id" class="form-select border-0 bg-light py-2" required>
-                            <option value="">-- Search and Select Book --</option>
+                        <label class="form-label small fw-bold">Select Book(s) <span class="text-primary small">(Hold Ctrl/Cmd to select multiple)</span></label>
+                        <select name="book_id[]" id="checkoutBook" class="form-select border-0 bg-light py-2" required multiple size="5">
                             <?php foreach ($books as $b): if ($b['available_copies'] > 0): ?>
                                 <option value="<?= $b['id'] ?>"><?= htmlspecialchars($b['title']) ?> (<?= $b['available_copies'] ?> available)</option>
                             <?php endif; endforeach; ?>
@@ -231,7 +269,122 @@ window.addEventListener('DOMContentLoaded', (event) => {
         const checkoutModal = new bootstrap.Modal(document.getElementById('checkoutModal'));
         if (checkoutModal) checkoutModal.show();
     }
+    
+    const scannerInput = document.getElementById('barcodeScanner');
+    const scannerFeedback = document.getElementById('scannerFeedback');
+    const bookSelect = document.getElementById('checkoutBook');
+    const studentSelect = document.getElementById('checkoutStudent');
+    
+    if (scannerInput) {
+        scannerInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                let code = this.value.trim();
+                if (code === '') return;
+                
+                fetch('ajax_barcode_lookup.php?code=' + encodeURIComponent(code))
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        if (data.type === 'student') {
+                            studentSelect.value = data.id;
+                            scannerFeedback.innerHTML = `<span class="text-success"><i class="bi bi-person-check-fill me-1"></i>Student Selected: ${data.name}</span>`;
+                        } else if (data.type === 'book') {
+                            let option = Array.from(bookSelect.options).find(opt => opt.value == data.id);
+                            if (option) {
+                                option.selected = true;
+                                scannerFeedback.innerHTML = `<span class="text-success"><i class="bi bi-journal-check me-1"></i>Book Selected: ${data.title}</span>`;
+                            } else {
+                                scannerFeedback.innerHTML = `<span class="text-warning">Book matched but is out of stock.</span>`;
+                            }
+                        }
+                        scannerInput.value = '';
+                    } else {
+                        scannerFeedback.innerHTML = `<span class="text-danger"><i class="bi bi-x-circle me-1"></i>${data.message || 'Barcode not found'}</span>`;
+                        scannerInput.value = '';
+                    }
+                })
+                .catch(() => {
+                    scannerFeedback.innerHTML = `<span class="text-danger"><i class="bi bi-exclamation-triangle me-1"></i>Lookup failed.</span>`;
+                });
+            }
+        });
+    }
+
+    const selectAll = document.getElementById('selectAllLoans');
+    const loanCheckboxes = document.querySelectorAll('.loan-checkbox');
+    const bulkReturnBtn = document.getElementById('bulkReturnBtn');
+    const bulkReturnCount = document.getElementById('bulkReturnCount');
+
+    function updateBulkReturnBtn() {
+        if (!bulkReturnBtn) return;
+        const checkedCount = document.querySelectorAll('.loan-checkbox:checked').length;
+        bulkReturnCount.innerText = checkedCount;
+        if (checkedCount > 0) {
+            bulkReturnBtn.classList.remove('d-none');
+        } else {
+            bulkReturnBtn.classList.add('d-none');
+        }
+    }
+
+    if (selectAll) {
+        selectAll.addEventListener('change', function() {
+            loanCheckboxes.forEach(cb => cb.checked = this.checked);
+            updateBulkReturnBtn();
+        });
+    }
+
+    loanCheckboxes.forEach(cb => {
+        cb.addEventListener('change', updateBulkReturnBtn);
+    });
 });
+
+async function processBulkReturn() {
+    const checked = document.querySelectorAll('.loan-checkbox:checked');
+    if (checked.length === 0) return;
+    
+    const ids = Array.from(checked).map(cb => cb.value);
+    
+    const res = await Swal.fire({
+        title: 'Bulk Return',
+        text: `Are you sure you want to return ${ids.length} selected books?`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#15803d',
+        confirmButtonText: 'Yes, Return All'
+    });
+
+    if (res.isConfirmed) {
+        const formData = new FormData();
+        formData.append('action', 'bulk_return');
+        ids.forEach(id => formData.append('return_ids[]', id));
+        
+        fetch('ajax_circulation_actions.php', { method: 'POST', body: formData })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                Swal.fire({ title: 'Success!', text: data.message, icon: 'success', timer: 1500, showConfirmButton: false }).then(() => location.reload());
+            } else {
+                Swal.fire('Error', data.message, 'error');
+            }
+        });
+    }
+}
+
+async function renewBook(borrowingId, title) {
+    const res = await Swal.fire({
+        title: 'Renew Book',
+        text: `Extend due date for "${title}" by 7 days?`,
+        icon: 'info',
+        showCancelButton: true,
+        confirmButtonColor: '#0ea5e9',
+        confirmButtonText: 'Renew (+7 Days)'
+    });
+
+    if (res.isConfirmed) {
+        performAction('renew', { borrowing_id: borrowingId });
+    }
+}
 
 async function settleFine(userId, name) {
     const res = await Swal.fire({

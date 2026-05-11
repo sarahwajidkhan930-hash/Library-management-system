@@ -65,6 +65,27 @@ if (!empty($search)) {
 $stmt->execute();
 $result = $stmt->get_result();
 
+// Handle CSV Export
+if (isset($_GET['export']) && $_GET['export'] === 'csv') {
+    $exportQuery = "SELECT name, identity_no, registration_no, email, phone, department, fines, is_active FROM users WHERE role = 'student'";
+    if (!empty($search)) {
+        $exportQuery .= " AND (name LIKE '%$search%' OR identity_no LIKE '%$search%' OR email LIKE '%$search%' OR department LIKE '%$search%')";
+    }
+    $exportResult = $mysqli->query($exportQuery);
+    
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename=student_roster_' . date('Y-m-d') . '.csv');
+    $output = fopen('php://output', 'w');
+    fputcsv($output, ['Name', 'Student ID', 'Reg No', 'Email', 'Phone', 'Department', 'Current Fines', 'Status']);
+    
+    while ($row = $exportResult->fetch_assoc()) {
+        $row['is_active'] = $row['is_active'] ? 'Active' : 'Inactive';
+        fputcsv($output, $row);
+    }
+    fclose($output);
+    exit;
+}
+
 require_once '../../includes/header.php';
 ?>
 
@@ -111,23 +132,32 @@ require_once '../../includes/header.php';
     <div class="col-md-6">
         <h2 class="premium-title"><i class="bi bi-people me-3 p-2 bg-light rounded-3"></i>Catalogue Directory</h2>
     </div>
-    <div class="col-md-6">
-        <form action="student_directory.php" method="GET" class="d-flex gap-2 justify-content-md-end">
-            <input type="text" name="search" class="search-input form-control-sm" style="width: 250px;" placeholder="Search ID, Name or Dept..." value="<?= htmlspecialchars($search) ?>">
+    <div class="col-md-6 d-flex gap-2 justify-content-md-end mt-3 mt-md-0">
+        <a href="?export=csv&search=<?= urlencode($search) ?>" class="btn btn-outline-success btn-sm rounded-pill px-3 shadow-sm border-0 bg-white">
+            <i class="bi bi-file-earmark-spreadsheet me-1"></i> Export Roster
+        </a>
+        <form action="student_directory.php" method="GET" class="d-flex gap-2">
+            <input type="text" name="search" class="search-input form-control-sm" style="width: 200px;" placeholder="Search ID, Name..." value="<?= htmlspecialchars($search) ?>">
             <button type="submit" class="search-btn"><i class="bi bi-search"></i></button>
         </form>
     </div>
 </div>
 
 <div class="premium-card shadow-sm">
-    <div class="premium-header pb-2 border-0">
+    <div class="premium-header pb-2 border-0 d-flex justify-content-between align-items-center">
         <p class="mb-0 text-muted small fw-600">Active Membership Registry</p>
+        <div id="bulk-action-bar" style="display:none;">
+            <button class="btn btn-outline-danger btn-sm rounded-pill px-4 fw-bold shadow-sm" onclick="bulkSettleFines()">
+                <i class="bi bi-cash-stack me-2"></i>Settle Fines for Selected
+            </button>
+        </div>
     </div>
     
     <div class="table-responsive">
         <table class="table table-premium mb-0">
             <thead>
                 <tr>
+                    <th style="width: 40px;"><input type="checkbox" id="select-all" class="form-check-input"></th>
                     <th>Student ID</th>
                     <th>Full Name</th>
                     <th>Department</th>
@@ -139,6 +169,7 @@ require_once '../../includes/header.php';
                 <?php if ($result->num_rows > 0): ?>
                     <?php while($row = $result->fetch_assoc()): ?>
                         <tr>
+                            <td><input type="checkbox" class="student-check form-check-input" value="<?= $row['id'] ?>"></td>
                             <td class="fw-bold text-premium-crimson"><?= htmlspecialchars($row['identity_no'] ?: 'N/A') ?></td>
                             <td class="fw-600"><?= htmlspecialchars($row['name']) ?></td>
                             <td><span class="badge bg-light text-dark border px-3"><?= htmlspecialchars($row['department']) ?></span></td>
@@ -254,6 +285,45 @@ require_once '../../includes/header.php';
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     const profileModal = new bootstrap.Modal(document.getElementById('profileModal'));
+    const selectAll = document.getElementById('select-all');
+    const studentChecks = document.querySelectorAll('.student-check');
+    const actionBar = document.getElementById('bulk-action-bar');
+
+    function updateActionBar() {
+        const checkedCount = document.querySelectorAll('.student-check:checked').length;
+        actionBar.style.display = checkedCount > 0 ? 'block' : 'none';
+    }
+
+    if (selectAll) {
+        selectAll.addEventListener('change', () => {
+            studentChecks.forEach(ck => ck.checked = selectAll.checked);
+            updateActionBar();
+        });
+    }
+
+    studentChecks.forEach(ck => {
+        ck.addEventListener('change', updateActionBar);
+    });
+
+    window.bulkSettleFines = async function() {
+        const selected = Array.from(document.querySelectorAll('.student-check:checked')).map(ck => ck.value);
+        if (!selected.length) return;
+
+        if (!confirm(`Settle all fines for ${selected.length} selected students?`)) return;
+
+        try {
+            const response = await fetch('ajax_bulk_fines.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ student_ids: selected })
+            });
+            const result = await response.json();
+            alert(result.message);
+            if (result.success) location.reload();
+        } catch (e) {
+            alert('Bulk action failed.');
+        }
+    };
     
     document.querySelectorAll('.view-profile').forEach(btn => {
         btn.addEventListener('click', () => {
