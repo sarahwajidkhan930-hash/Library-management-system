@@ -3,6 +3,38 @@
 > A full-featured, role-based Library ERP built with PHP, MySQL, Bootstrap 5, and AdminLTE 4.  
 > Theme: **Crimson & White** premium aesthetic with dynamic sidebar and RBAC.
 
+## 🖼️ Visuals
+
+<table border="0">
+  <tr>
+    <td width="50%">
+      <p align="center"><b>Home / Landing Page</b></p>
+      <img src="assets/img/screenshots/home_page.png" alt="Home Page" width="100%">
+    </td>
+    <td width="50%">
+      <p align="center"><b>Login Page</b></p>
+      <img src="assets/img/screenshots/login_page.png" alt="Login Page" width="100%">
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" colspan="2">
+      <p align="center"><b>Registration Page</b></p>
+      <img src="assets/img/screenshots/register_page.png" alt="Registration Page" width="100%">
+    </td>
+  </tr>
+</table>
+
+---
+
+## ✨ Key Features
+
+- **🔐 Robust RBAC**: Comprehensive Role-Based Access Control for Super Admins, Librarians, Assistant Managers, and Students.
+- **📚 Smart Circulation**: Seamless book issuance and return system with automatic fine calculation.
+- **📊 Live Analytics**: Real-time KPI stats and operations feed for librarians.
+- **🛡️ Audit Trails**: Detailed digital audit logs tracking every critical action in the system.
+- **📋 Inventory Control**: Advanced management of book stock, categories, and authors.
+- **💡 Student Portal**: Personal dashboard for students to track borrowings, pay fines, and request new books.
+
 ---
 
 ## 🏗️ Tech Stack
